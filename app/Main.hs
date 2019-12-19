@@ -1,8 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
 import           Control.Monad
+import           Data.Text as T
 
 import           Control.Lens ((^.), (.~))
 import           Control.Lens.TH (makeLenses)
@@ -17,23 +19,28 @@ import qualified Graphics.Vty.Input.Events as K
 
 data Event = NoEvent
 
-data Control = Search deriving (Eq, Ord)
+data Control = Search deriving (Eq, Ord, Show)
 
-data State = State { _stSearchBox :: !(BE.Editor String Control)
+data State = State { _stSearchBox :: !(BE.Editor Text Control)
                    }
 
 makeLenses ''State
 
 drawUI :: State -> [B.Widget Control]
 drawUI st = do
-    []
+    [B.padAll 1 contentBlock]
+    where
+        contentBlock = editor Search (st ^. stSearchBox) 
+        editor n e =
+            B.vLimit 1 $
+            BE.renderEditor (B.txt . T.unlines) (True) e
 
 handleEvent :: State -> B.BrickEvent Control Event -> B.EventM Control (B.Next State)
 handleEvent st ev = do
     case ev of
         (B.VtyEvent (V.EvKey k ms)) ->
             case (k, ms) of
-                (K.KEsc, []) -> B.halt st
+                (K.KEsc, _) -> B.halt st
                 _ -> B.continue st
         _ -> B.continue st
 

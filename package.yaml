@@ -23,18 +23,14 @@ dependencies:
 - vty
 - brick
 - lens
-
-# library:
-#   source-dirs: src
+- text
 
 executables:
-  kenji-exe:
+  kenji:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-#    dependencies:
-#    - kenji
 
