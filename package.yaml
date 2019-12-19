@@ -20,9 +20,12 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- vty
+- brick
+- lens
 
-library:
-  source-dirs: src
+# library:
+#   source-dirs: src
 
 executables:
   kenji-exe:
@@ -32,16 +35,6 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    dependencies:
-    - kenji
+#    dependencies:
+#    - kenji
 
-tests:
-  kenji-test:
-    main:                Spec.hs
-    source-dirs:         test
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - kenji
