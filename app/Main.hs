@@ -65,3 +65,5 @@ main = do
     
     void $ B.customMain initialVty buildVty (Nothing) app st
 
+--    someFunc
+
