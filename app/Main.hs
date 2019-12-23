@@ -3,6 +3,8 @@
 
 module Main where
 
+import           Lib
+
 import           Control.Monad
 import           Data.Text as T
 
@@ -33,7 +35,7 @@ drawUI st = do
         contentBlock = editor Search (st ^. stSearchBox) 
         editor n e =
             B.vLimit 1 $
-            BE.renderEditor (B.txt . T.unlines) (True) e
+            BE.renderEditor True e
 
 handleEvent :: State -> B.BrickEvent Control Event -> B.EventM Control (B.Next State)
 handleEvent st ev = do
@@ -51,19 +53,16 @@ main = do
                                           ]
 
     let app = B.App { B.appDraw = drawUI
-                , B.appChooseCursor = B.showFirstCursor
-                , B.appHandleEvent = handleEvent
-                , B.appStartEvent = pure
-                , B.appAttrMap = const appAttrMap
-                }
+                    , B.appChooseCursor = B.showFirstCursor
+                    , B.appHandleEvent = handleEvent
+                    , B.appStartEvent = pure
+                    , B.appAttrMap = const appAttrMap
+                    }
 
-    let st = State { _stSearchBox = BE.editor Search (Just 1) ""
+    let st = State { _stSearchBox = BE.editor Search (B.txt . T.unlines)  (Just 1) ""
                    }
     
-    let buildVty = V.mkVty V.defaultConfig
-    initialVty <- buildVty
-    
-    void $ B.customMain initialVty buildVty (Nothing) app st
+    void $ B.customMain (V.mkVty V.defaultConfig) (Nothing) app st
 
---    someFunc
+    someFunc
 
