@@ -64,5 +64,3 @@ main = do
     
     void $ B.customMain (V.mkVty V.defaultConfig) (Nothing) app st
 
-    someFunc
-
