@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Lib
-    ( textToImage
+    ( charToImage
     , imageToBraile
     ) where
 
@@ -10,27 +10,33 @@ import Graphics.ImageMagick.MagickWand
 
 import Data.Text as T
 
-textToImage :: Text -> IO ()
-textToImage text = localGenesis $ do
-    (_,w) <- magickWand
-    (_,dw) <- drawingWand
+charToImage :: Char -> IO ()
+charToImage char = localGenesis $ do
+    let w = 512
+    let h = 512
+    let size = (fromIntegral $ min w h) / 2
+
+    (_, image) <- magickWand
+    (_, dw) <- drawingWand
     pw <- pixelWand
 
     pw `setColor` "white"
-    newImage w 512 256 pw
-
     dw `setFillColor` pw
-    dw `setFont` "Noto-Sans-Mono-CJK-JP-Regular"
-    dw `setFontSize` (256 / 0.75)
+    newImage image w h pw
 
     pw `setColor` "black"
     dw `setStrokeColor` pw
     dw `setFillColor` pw
+    dw `setFont` "res/NotoSansCJK-Regular.ttc"
+    dw `setFontSize` (size / 0.75)
+    drawAnnotation dw (size * 0.5) (size * 1.5) (T.pack [char])
 
-    drawAnnotation dw 0 256 text
-    drawImage w dw
+    drawImage image dw
+    trimImage image 0
 
-    writeImage w (Just "a.png")
+    writeImage image (Just "test.png")
+    
+    -- (_, it) <- pixelIterator image
     
 imageToBraile :: Text
 imageToBraile = undefined
