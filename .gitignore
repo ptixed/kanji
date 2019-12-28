@@ -4,4 +4,5 @@ kanji.cabal
 stack.yaml.lock
 
 *~
+*.png
 

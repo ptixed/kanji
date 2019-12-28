@@ -1,8 +1,10 @@
 # kanji
 
-apt-get build-dep imagemagick
-apt-get install libmagick++-dev
+## Arch
 
-clip image
-use font from path 
+`sudo pacman -S libmagick6`
+
+## Debian
+
+`sudo apt-get install libmagick++-dev`
 
