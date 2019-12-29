@@ -1,17 +1,29 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Lib
-    ( charToImage
-    , imageToBraile
+    ( textToBraile
     ) where
 
-import Graphics.ImageMagick.MagickCore.Types
-import Graphics.ImageMagick.MagickWand
+import           Graphics.ImageMagick.MagickCore.Types
+import           Graphics.ImageMagick.MagickWand
 
-import Data.Text as T
+import           Control.Monad
+import           Control.Monad.Trans.Resource.Internal (MonadResource)
 
-charToImage :: Char -> IO ()
-charToImage char = localGenesis $ do
+import qualified Data.Text as T
+import qualified Data.Vector.Storable as V
+
+textToBraile :: Char -> Int -> Int -> IO ([[Bool]]) -- change to Text, does it have to be IO?
+textToBraile text maxw maxh = localGenesis $ do
+    image <- charToImage text >>= \x -> resizeImageWithAspect x (2 * maxw) (4 * maxh)
+    
+    -- writeImage image (Just "test.png")
+    imageToPixels image 
+
+charToImage :: MonadResource m => Char -> m PMagickWand
+charToImage char = do
     let w = 512
     let h = 512
     let size = (fromIntegral $ min w h) / 2
@@ -33,11 +45,41 @@ charToImage char = localGenesis $ do
 
     drawImage image dw
     trimImage image 0
-
-    writeImage image (Just "test.png")
     
-    -- (_, it) <- pixelIterator image
-    
-imageToBraile :: Text
-imageToBraile = undefined
+    return image
 
+resizeImageWithAspect :: MonadResource m => PMagickWand -> Int -> Int -> m PMagickWand
+resizeImageWithAspect image (fromIntegral -> maxw) (fromIntegral -> maxh) = do
+    w <- getImageWidth  image >>= return . fromIntegral
+    h <- getImageHeight image >>= return . fromIntegral
+
+    let aspect  = w    / h
+    let maspect = maxw / maxh
+
+    let scale = if aspect > maspect then maxw / w else maxh / h
+
+    let neww = if aspect > maspect then scale * w else maxw
+    let newh = if aspect < maspect then scale * h else maxh
+
+    resizeImage image (floor neww) (floor newh) undefinedFilter 1.0
+    
+    return image
+
+imageToPixels :: MonadResource m => PMagickWand -> m [[Bool]]
+imageToPixels image = do
+    h <- getImageHeight image
+    (_, it) <- pixelIterator image
+    (flip mapM) [1..h] $ \_ -> do
+        pixels <- pixelGetNextIteratorRow it
+        case pixels of
+            Nothing -> return []
+            Just xs -> (flip mapM) (V.toList xs) threshold
+    where
+        threshold :: MonadResource m => PPixelWand -> m Bool
+        threshold pixel = do
+            c <- pixelGetMagickColor pixel
+            r <- getPixelRed   c
+            g <- getPixelGreen c
+            b <- getPixelBlue  c
+            return $ (max r $ max g b) > 0.5
+        

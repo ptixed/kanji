@@ -12,11 +12,13 @@ description:         Please see the README on GitHub at <https://github.com/ptix
 
 dependencies:
 - base >= 4.7 && < 5
-- vty
-- brick
-- lens
 - text
+- vector
+- lens
+- brick
+- vty
 - imagemagick
+- resourcet
   
 library:
     source-dirs: src
