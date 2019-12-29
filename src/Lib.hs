@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE BangPatterns #-}
 
 module Lib
     ( textToBraile
@@ -18,18 +19,22 @@ import qualified Data.Text as T
 import qualified Data.Vector.Storable as V
 
 textToBraile :: Char -> Int -> Int -> IO [[Char]] -- change to Text, does it have to be IO?
-textToBraile text maxw maxh = localGenesis $ do
-    image <- charToImage text >>= \x -> resizeImageWithAspect x (2 * maxw) (4 * maxh)
-    imageToBraile image
+textToBraile text maxw maxh = withMagickWandGenesis $ localGenesis $ do
+    image <- charToImage text
+    !result <- imageToBraile image maxw maxh
+    return result
 
-pathToBraile :: T.Text -> IO [[Char]]
-pathToBraile path = localGenesis $ do
-    image <- undefined
-    imageToBraile image
+pathToBraile :: T.Text -> Int -> Int -> IO [[Char]]
+pathToBraile path maxw maxh = withMagickWandGenesis $ localGenesis $ do
+    (_, image) <- magickWand
+    readImage image path
+    !result <- imageToBraile image maxw maxh
+    return result
 
-imageToBraile :: MonadResource m => PMagickWand -> m [[Char]]
-imageToBraile image = do
-    pixels <- imageToPixels image 
+imageToBraile :: MonadResource m => PMagickWand -> Int -> Int -> m [[Char]]
+imageToBraile image maxw maxh = do
+    resized <- resizeImageWithAspect image (2 * maxw) (4 * maxh) 
+    pixels <- imageToPixels resized
     return $ pixelsToBraile pixels
 
 charToImage :: MonadResource m => Char -> m PMagickWand

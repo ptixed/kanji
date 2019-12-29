@@ -3,6 +3,8 @@
 kanji.cabal
 stack.yaml.lock
 
+/tmp/
 *~
 *.png
+*.jpg
 

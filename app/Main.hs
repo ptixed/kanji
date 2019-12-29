@@ -1,5 +1,5 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
+-- {-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
@@ -8,8 +8,8 @@ import           Lib
 import           Control.Monad
 import qualified Data.Text as T
 
-import           Control.Lens ((^.), (.~))
-import           Control.Lens.TH (makeLenses)
+-- import           Control.Lens ((^.), (.~))
+-- import           Control.Lens.TH (makeLenses)
 
 import           Brick ((<+>), (<=>))
 import qualified Brick as B
@@ -26,16 +26,17 @@ data Control = Search deriving (Eq, Ord, Show)
 data State = State { _stSearchBox :: !(BE.Editor T.Text Control)
                    }
 
-makeLenses ''State
+-- makeLenses ''State
 
 drawUI :: State -> [B.Widget Control]
 drawUI st = do
-    [B.padAll 1 contentBlock]
-    where
-        contentBlock = editor Search (st ^. stSearchBox) 
-        editor n e =
-            B.vLimit 1 $
-            BE.renderEditor True e
+    undefined
+--    [B.padAll 1 contentBlock]
+--    where
+--        contentBlock = editor Search (st ^. stSearchBox) 
+--        editor n e =
+--            B.vLimit 1 $
+--            BE.renderEditor True e
 
 handleEvent :: State -> B.BrickEvent Control Event -> B.EventM Control (B.Next State)
 handleEvent st ev = do
