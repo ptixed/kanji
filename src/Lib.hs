@@ -80,7 +80,7 @@ resizeImageWithAspect image (fromIntegral -> maxw) (fromIntegral -> maxh) = do
     
     return image
 
-imageToPixels :: MonadResource m => PMagickWand -> Double -> m [[Bool]]
+imageToPixels :: MonadResource m => PMagickWand -> Double -> m [[Int]]
 imageToPixels image thres = do
     h <- getImageHeight image
     (_, it) <- pixelIterator image
@@ -90,19 +90,14 @@ imageToPixels image thres = do
             Nothing -> return []
             Just xs -> (flip mapM) (V.toList xs) threshold
     where
-        threshold :: MonadResource m => PPixelWand -> m Bool
+        threshold :: MonadResource m => PPixelWand -> m Int
         threshold pixel = do
             (_, _, l) <- getHSL pixel
-            return $ l > thres
+            return $ if l > thres then 1 else 0
 
-pixelsToBraile :: [[Bool]] -> [[Char]]
-pixelsToBraile xs = fmap (\x -> fmap (f x) [0..(length (xs !! 0) `div` 2) - 1]) [0..(length xs `div` 4) - 1] where 
-    f ((4*) -> y) ((2*) -> x) = chr $ 0x2800 + 
-        (if (xs !! (y + 0) !! (x + 0)) then 1   else 0) +
-        (if (xs !! (y + 1) !! (x + 0)) then 2   else 0) +
-        (if (xs !! (y + 2) !! (x + 0)) then 4   else 0) +
-        (if (xs !! (y + 0) !! (x + 1)) then 8   else 0) +
-        (if (xs !! (y + 1) !! (x + 1)) then 16  else 0) +
-        (if (xs !! (y + 2) !! (x + 1)) then 32  else 0) +
-        (if (xs !! (y + 3) !! (x + 0)) then 64  else 0) +
-        (if (xs !! (y + 3) !! (x + 1)) then 128 else 0)
+pixelsToBraile :: [[Int]] -> [[Char]]
+pixelsToBraile (x1:x2:x3:x4:xs) = (f x1 x2 x3 x4):(pixelsToBraile xs) where
+    f (y11:y12:ys1) (y21:y22:ys2) (y31:y32:ys3) (y41:y42:ys4) = c:(f ys1 ys2 ys3 ys4) where
+        c = chr $ 0x2800 + y11 + y21 * 2 + y31 * 4 + y12 * 8 + y22 * 16 + y32 * 32 + y41 * 64 + y42 * 128
+    f _ _ _ _ = []
+pixelsToBraile _ = []
