@@ -21,20 +21,20 @@ import qualified Data.Vector.Storable as V
 textToBraile :: Char -> Int -> Int -> IO [[Char]] -- change to Text, does it have to be IO?
 textToBraile text maxw maxh = withMagickWandGenesis $ localGenesis $ do
     image <- charToImage text
-    !result <- imageToBraile image maxw maxh
+    !result <- imageToBraile image maxw maxh 0.5
     return result
 
-pathToBraile :: T.Text -> Int -> Int -> IO [[Char]]
-pathToBraile path maxw maxh = withMagickWandGenesis $ localGenesis $ do
+pathToBraile :: T.Text -> Int -> Int -> Double -> IO [[Char]] 
+pathToBraile path maxw maxh thres = withMagickWandGenesis $ localGenesis $ do -- genesis?
     (_, image) <- magickWand
     readImage image path
-    !result <- imageToBraile image maxw maxh
+    !result <- imageToBraile image maxw maxh thres -- no bang?
     return result
 
-imageToBraile :: MonadResource m => PMagickWand -> Int -> Int -> m [[Char]]
-imageToBraile image maxw maxh = do
+imageToBraile :: MonadResource m => PMagickWand -> Int -> Int -> Double -> m [[Char]]
+imageToBraile image maxw maxh thres = do
     resized <- resizeImageWithAspect image (2 * maxw) (4 * maxh) 
-    pixels <- imageToPixels resized
+    pixels <- imageToPixels resized thres
     return $ pixelsToBraile pixels
 
 charToImage :: MonadResource m => Char -> m PMagickWand
@@ -80,8 +80,8 @@ resizeImageWithAspect image (fromIntegral -> maxw) (fromIntegral -> maxh) = do
     
     return image
 
-imageToPixels :: MonadResource m => PMagickWand -> m [[Bool]]
-imageToPixels image = do
+imageToPixels :: MonadResource m => PMagickWand -> Double -> m [[Bool]]
+imageToPixels image thres = do
     h <- getImageHeight image
     (_, it) <- pixelIterator image
     (flip mapM) [1..h] $ \_ -> do
@@ -92,11 +92,8 @@ imageToPixels image = do
     where
         threshold :: MonadResource m => PPixelWand -> m Bool
         threshold pixel = do
-            c <- pixelGetMagickColor pixel
-            r <- getPixelRed   c
-            g <- getPixelGreen c
-            b <- getPixelBlue  c
-            return $ (max r $ max g b) > 0.5
+            (_, _, l) <- getHSL pixel
+            return $ l > thres
 
 pixelsToBraile :: [[Bool]] -> [[Char]]
 pixelsToBraile xs = fmap (\x -> fmap (f x) [0..(length (xs !! 0) `div` 2) - 1]) [0..(length xs `div` 4) - 1] where 
