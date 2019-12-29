@@ -4,6 +4,7 @@
 
 module Lib
     ( textToBraile
+    , pathToBraile
     ) where
 
 import           Graphics.ImageMagick.MagickCore.Types
@@ -12,15 +13,24 @@ import           Graphics.ImageMagick.MagickWand
 import           Control.Monad
 import           Control.Monad.Trans.Resource.Internal (MonadResource)
 
+import           Data.Char
 import qualified Data.Text as T
 import qualified Data.Vector.Storable as V
 
-textToBraile :: Char -> Int -> Int -> IO ([[Bool]]) -- change to Text, does it have to be IO?
+textToBraile :: Char -> Int -> Int -> IO [[Char]] -- change to Text, does it have to be IO?
 textToBraile text maxw maxh = localGenesis $ do
     image <- charToImage text >>= \x -> resizeImageWithAspect x (2 * maxw) (4 * maxh)
-    
-    -- writeImage image (Just "test.png")
-    imageToPixels image 
+    imageToBraile image
+
+pathToBraile :: T.Text -> IO [[Char]]
+pathToBraile path = localGenesis $ do
+    image <- undefined
+    imageToBraile image
+
+imageToBraile :: MonadResource m => PMagickWand -> m [[Char]]
+imageToBraile image = do
+    pixels <- imageToPixels image 
+    return $ pixelsToBraile pixels
 
 charToImage :: MonadResource m => Char -> m PMagickWand
 charToImage char = do
@@ -82,4 +92,15 @@ imageToPixels image = do
             g <- getPixelGreen c
             b <- getPixelBlue  c
             return $ (max r $ max g b) > 0.5
-        
+
+pixelsToBraile :: [[Bool]] -> [[Char]]
+pixelsToBraile xs = fmap (\x -> fmap (f x) [0..(length (xs !! 0) `div` 2) - 1]) [0..(length xs `div` 4) - 1] where 
+    f ((4*) -> y) ((2*) -> x) = chr $ 0x2800 + 
+        (if (xs !! (y + 0) !! (x + 0)) then 1   else 0) +
+        (if (xs !! (y + 1) !! (x + 0)) then 2   else 0) +
+        (if (xs !! (y + 2) !! (x + 0)) then 4   else 0) +
+        (if (xs !! (y + 0) !! (x + 1)) then 8   else 0) +
+        (if (xs !! (y + 1) !! (x + 1)) then 16  else 0) +
+        (if (xs !! (y + 2) !! (x + 1)) then 32  else 0) +
+        (if (xs !! (y + 3) !! (x + 0)) then 64  else 0) +
+        (if (xs !! (y + 3) !! (x + 1)) then 128 else 0)

@@ -6,7 +6,7 @@ module Main where
 import           Lib
 
 import           Control.Monad
-import           Data.Text as T
+import qualified Data.Text as T
 
 import           Control.Lens ((^.), (.~))
 import           Control.Lens.TH (makeLenses)
@@ -23,7 +23,7 @@ data Event = NoEvent
 
 data Control = Search deriving (Eq, Ord, Show)
 
-data State = State { _stSearchBox :: !(BE.Editor Text Control)
+data State = State { _stSearchBox :: !(BE.Editor T.Text Control)
                    }
 
 makeLenses ''State

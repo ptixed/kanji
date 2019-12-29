@@ -1,5 +1,7 @@
 # kanji
 
+use Vectors instead of Lists for pixels
+
 ## Arch
 
 `sudo pacman -S libmagick6`
