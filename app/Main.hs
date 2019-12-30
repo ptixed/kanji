@@ -1,46 +1,50 @@
 {-# LANGUAGE OverloadedStrings #-}
--- {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
 import           Lib
 
+import           Control.Concurrent
 import           Control.Monad
 import qualified Data.Text as T
+import           Data.List
+import           System.Environment
 
--- import           Control.Lens ((^.), (.~))
--- import           Control.Lens.TH (makeLenses)
+import           Control.Lens
+import           Control.Lens.TH (makeLenses)
 
 import           Brick ((<+>), (<=>))
 import qualified Brick as B
 import qualified Brick.Widgets.Edit as BE
 import qualified Brick.AttrMap as BA
+import qualified Brick.BChan as BCh
 
 import qualified Graphics.Vty as V
 import qualified Graphics.Vty.Input.Events as K
 
-data Event = NoEvent
+data Event = TickEvent
 
 data Control = Search deriving (Eq, Ord, Show)
 
 data State = State { _stSearchBox :: !(BE.Editor T.Text Control)
+                   , _stImage :: [T.Text]
+                   , _stFrame :: Int
                    }
 
--- makeLenses ''State
+makeLenses ''State
 
 drawUI :: State -> [B.Widget Control]
 drawUI st = do
-    undefined
---    [B.padAll 1 contentBlock]
---    where
---        contentBlock = editor Search (st ^. stSearchBox) 
---        editor n e =
---            B.vLimit 1 $
---            BE.renderEditor True e
+    [B.padAll 1 contentBlock]
+    where
+        contentBlock = B.txt $ (st ^. stImage) !! (st ^. stFrame `rem` length (st ^. stImage))
 
 handleEvent :: State -> B.BrickEvent Control Event -> B.EventM Control (B.Next State)
 handleEvent st ev = do
     case ev of
+        (B.AppEvent (TickEvent)) ->
+            B.continue $ over stFrame (+1) st
         (B.VtyEvent (V.EvKey k ms)) ->
             case (k, ms) of
                 (K.KEsc, _) -> B.halt st
@@ -49,6 +53,16 @@ handleEvent st ev = do
 
 main :: IO ()
 main = do
+    [path] <- getArgs
+    image <- pathToBraile (T.pack path) 160 80 0.90 >>= \xs -> do
+        return $ map (T.pack . intercalate "\n") xs
+
+    chan <- BCh.newBChan 5
+
+    void . forkIO $ forever $ do
+        BCh.writeBChan chan TickEvent
+        threadDelay 100000
+
     let appAttrMap = BA.attrMap V.defAttr [ (BE.editAttr,        V.white `B.on` V.black)
                                           , (BE.editFocusedAttr, V.black `B.on` V.yellow)
                                           ]
@@ -61,7 +75,9 @@ main = do
                     }
 
     let st = State { _stSearchBox = BE.editor Search (B.txt . T.unlines)  (Just 1) ""
+                   , _stImage = image
+                   , _stFrame = 0
                    }
     
-    void $ B.customMain (V.mkVty V.defaultConfig) (Nothing) app st
+    void $ B.customMain (V.mkVty V.defaultConfig) (Just chan) app st
 

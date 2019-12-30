@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE BangPatterns #-}
 
 module Lib
     ( textToBraile
@@ -21,15 +20,20 @@ import qualified Data.Vector.Storable as V
 textToBraile :: Char -> Int -> Int -> IO [[Char]] -- change to Text, does it have to be IO?
 textToBraile text maxw maxh = withMagickWandGenesis $ localGenesis $ do
     image <- charToImage text
-    !result <- imageToBraile image maxw maxh 0.5
-    return result
+    imageToBraile image maxw maxh 0.5
 
-pathToBraile :: T.Text -> Int -> Int -> Double -> IO [[Char]] 
+pathToBraile :: T.Text -> Int -> Int -> Double -> IO [[[Char]]] 
 pathToBraile path maxw maxh thres = withMagickWandGenesis $ localGenesis $ do -- genesis?
-    (_, image) <- magickWand
-    readImage image path
-    !result <- imageToBraile image maxw maxh thres -- no bang?
-    return result
+    (_, image0) <- magickWand
+    readImage image0 path
+    
+    (_, image1) <- coalesceImages image0
+    n <- getNumberImages image1
+
+    forM [0..(n-1)] $ \i -> do
+        image1 `setIteratorIndex` i
+        (_, image2) <- getImage image1
+        imageToBraile image2 maxw maxh thres
 
 imageToBraile :: MonadResource m => PMagickWand -> Int -> Int -> Double -> m [[Char]]
 imageToBraile image maxw maxh thres = do
@@ -88,12 +92,9 @@ imageToPixels image thres = do
         pixels <- pixelGetNextIteratorRow it
         case pixels of
             Nothing -> return []
-            Just xs -> (flip mapM) (V.toList xs) threshold
-    where
-        threshold :: MonadResource m => PPixelWand -> m Int
-        threshold pixel = do
-            (_, _, l) <- getHSL pixel
-            return $ if l > thres then 1 else 0
+            Just xs -> (flip mapM) (V.toList xs) $ \pixel -> do
+                (_, _, l) <- getHSL pixel
+                return $ if l > thres then 1 else 0
 
 pixelsToBraile :: [[Int]] -> [[Char]]
 pixelsToBraile (x1:x2:x3:x4:xs) = (f x1 x2 x3 x4):(pixelsToBraile xs) where
