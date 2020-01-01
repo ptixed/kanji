@@ -14,8 +14,9 @@ import           Control.Monad
 import           Control.Monad.Trans.Resource.Internal (MonadResource)
 
 import           Data.Char
+import           Data.List.Split
 import qualified Data.Text as T
-import qualified Data.Vector.Storable as V
+import           Data.Word
 
 textToBraile :: Char -> Int -> Int -> IO [[Char]] -- change to Text, does it have to be IO?
 textToBraile text maxw maxh = withMagickWandGenesis $ localGenesis $ do
@@ -85,16 +86,15 @@ resizeImageWithAspect image (fromIntegral -> maxw) (fromIntegral -> maxh) = do
     return image
 
 imageToPixels :: MonadResource m => PMagickWand -> Double -> m [[Int]]
-imageToPixels image thres = do
+imageToPixels image (floor . (*255) -> thres) = do
+    w <- getImageWidth image
     h <- getImageHeight image
-    (_, it) <- pixelIterator image
-    (flip mapM) [1..h] $ \_ -> do
-        pixels <- pixelGetNextIteratorRow it
-        case pixels of
-            Nothing -> return []
-            Just xs -> (flip mapM) (V.toList xs) $ \pixel -> do
-                (_, _, l) <- getHSL pixel
-                return $ if l > thres then 1 else 0
+    pixels <- exportImagePixels image 0 0 w h "RGB"
+    return $ chunksOf w $ threshold pixels
+  where
+    threshold :: [Word8] -> [Int]
+    threshold (r:g:b:xs) = (if r > thres || g > thres || b > thres then 1 else 0):(threshold xs)
+    threshold _  = []
 
 pixelsToBraile :: [[Int]] -> [[Char]]
 pixelsToBraile (x1:x2:x3:x4:xs) = (f x1 x2 x3 x4):(pixelsToBraile xs) where
