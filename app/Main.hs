@@ -53,12 +53,14 @@ handleEvent st ev = do
 
 main :: IO ()
 main = do
-    [path] <- getArgs
-    image <- pathToBraile (T.pack path) 160 80 0.90 >>= \xs -> do
+    [path, threshold] <- getArgs
+    vty <- V.mkVty V.defaultConfig
+    (w, h) <- V.displayBounds $ V.outputIface vty
+
+    image <- pathToBraile (T.pack path) w h (read threshold) >>= \xs -> do
         return $ map (T.pack . intercalate "\n") xs
 
     chan <- BCh.newBChan 5
-
     void . forkIO $ forever $ do
         BCh.writeBChan chan TickEvent
         threadDelay 100000
@@ -79,5 +81,5 @@ main = do
                    , _stFrame = 0
                    }
     
-    void $ B.customMain (V.mkVty V.defaultConfig) (Just chan) app st
+    void $ B.customMain (return vty) (Just chan) app st
 
