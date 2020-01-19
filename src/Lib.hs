@@ -78,8 +78,8 @@ resizeImageWithAspect image (fromIntegral -> maxw) (fromIntegral -> maxh) = do
 
     let scale = if aspect > maspect then maxw / w else maxh / h
 
-    let neww = if aspect > maspect then scale * w else maxw
-    let newh = if aspect < maspect then scale * h else maxh
+    let neww = scale * w
+    let newh = scale * h
 
     resizeImage image (floor neww) (floor newh) undefinedFilter 1.0
     
